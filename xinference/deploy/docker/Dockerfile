@@ -20,10 +20,11 @@ RUN apt-get -y update \
   && nvm use default \
   && apt-get -yq clean
 
-RUN wget https://developer.download.nvidia.com/compute/cuda/12.4.0/local_installers/cuda_12.4.0_550.54.14_linux.run && \
-    chmod +x cuda_12.4.0_550.54.14_linux.run && \
-    ./cuda_12.4.0_550.54.14_linux.run --silent --toolkit --override && \
-    rm -f cuda_12.4.0_550.54.14_linux.run
+# ✅ 改为 CUDA 12.1 安装
+RUN wget https://developer.download.nvidia.com/compute/cuda/12.1.105/local_installers/cuda_12.1.105_530.30.02_linux.run && \
+    chmod +x cuda_12.1.105_530.30.02_linux.run && \
+    ./cuda_12.1.105_530.30.02_linux.run --silent --toolkit --override && \
+    rm -f cuda_12.1.105_530.30.02_linux.run
 
 ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:/usr/local/lib/python3.10/dist-packages/nvidia/cublas/lib
@@ -43,13 +44,15 @@ RUN pip install --upgrade -i "$PIP_INDEX" pip setuptools wheel&& \
     pip install torch==2.7.1 && \
     pip uninstall flashinfer -y && \
     pip install flashinfer-python==0.2.9rc2 && \
-    pip install https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.3.18/flash_attn-2.7.4+cu124torch2.7-cp310-cp310-linux_x86_64.whl && \
+    # ✅ 改为 CUDA 12.1 对应的 flash-attn wheel
+    pip install https://github.com/mjun0812/flash-attention-prebuild-wheels/releases/download/v0.3.18/flash_attn-2.7.4+cu121torch2.7-cp310-cp310-linux_x86_64.whl && \
     cd /opt/inference && \
     python3 setup.py build_web && \
     git restore . && \
     pip install -i "$PIP_INDEX" --no-deps "." && \
     pip uninstall xllamacpp -y && \
-    pip install "xllamacpp>=0.2.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu124 && \
+    # ✅ 改为 cu121 对应的 xllamacpp
+    pip install "xllamacpp>=0.2.0" --index-url https://xorbitsai.github.io/xllamacpp/whl/cu121 && \
     # clean packages
     pip cache purge
 
@@ -67,3 +70,4 @@ RUN /opt/conda/bin/conda create -n ffmpeg-env -c conda-forge 'ffmpeg<7' -y && \
 # Overwrite the entrypoint of vllm's base image
 ENTRYPOINT []
 CMD ["/bin/bash"]
+
