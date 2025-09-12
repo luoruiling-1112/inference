@@ -29,6 +29,8 @@ RUN pip install --upgrade -i "$PIP_INDEX" pip setuptools wheel&& \
     pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/requirements/requirements-ml.txt && \
     pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/requirements/requirements-models.txt && \
     pip install -i "$PIP_INDEX" --no-deps WeTextProcessing==1.0.4.1 && \
+    pip install torch==2.4.1+cu121 torchvision==0.19.1+cu121 torchaudio==2.4.1+cu121 \
+      --index-url https://download.pytorch.org/whl/cu121 && \
     pip install importlib_resources && \
     pip install -i "$PIP_INDEX" sgl-kernel==0.1.2+cu121 && \
     cd /opt/inference && \
