@@ -1,3 +1,4 @@
+FROM vllm/vllm-openai:v0.6.0
 COPY . /opt/inference
 WORKDIR /opt/inference
 # ===== 调试：列出拷进去的结构 =====
