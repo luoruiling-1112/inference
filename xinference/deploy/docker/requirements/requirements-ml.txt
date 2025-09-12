@@ -23,7 +23,7 @@ diffusers>=0.32.0
 gdown
 pyarrow
 HyperPyYAML
-onnxruntime-gpu==1.17.1+cu121 # 官方 +cu121
+onnxruntime-gpu==1.17.1 # 官方 +cu121
 pyworld>=0.3.4
 boto3>=1.28.55,<1.28.65
 tensorizer~=2.9.0
