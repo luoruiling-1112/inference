@@ -15,9 +15,6 @@ optimum
 attrdict
 timm>=0.9.16
 FlagEmbedding
-torchvision==0.19.1+cu121     # CUDA 12.1
-torchaudio==2.4.1+cu121       # CUDA 12.1
-torch==2.4.1+cu121            # CUDA 12.1（≤2.4.1 最后提供 +cu121）
 lightning>=2.0.0
 hydra-core>=1.3.2
 inflect
