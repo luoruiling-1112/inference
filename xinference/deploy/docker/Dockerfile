@@ -2,6 +2,7 @@ FROM vllm/vllm-openai:v0.6.0
 
 COPY . /opt/inference
 WORKDIR /opt/inference
+RUN ls -l xinference/deploy/docker/requirements/
 
 # 仅装 xinference 需要的依赖，不碰 cuda/pytorch/flash
 ARG PIP_INDEX=https://pypi.org/simple
