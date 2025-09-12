@@ -1,15 +1,22 @@
-# -------------- 1. 官方 vLLM 0.6.0 已含 CUDA 12.1 + Python 3.10 + vLLM --------------
 FROM vllm/vllm-openai:v0.6.0
 
-# -------------- 2. 修复原历史 LABEL 语法错误 --------------
-LABEL maintainer="Xorbits AI <xorbitsai@github.com>"
+COPY . /opt/inference
+WORKDIR /opt/inference
 
-# -------------- 3. 一键升级到 Xinference v1.9.1 --------------
-# 国内用户取消注释下一行可加速
-# RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir 'xinference[all]==1.9.1'
+# 仅装 xinference 需要的依赖，不碰 cuda/pytorch/flash
+ARG PIP_INDEX=https://pypi.org/simple
+RUN pip install --upgrade -i "$PIP_INDEX" pip && \
+    pip install -i "$PIP_INDEX" -r xinference/deploy/docker/requirements/requirements-base.txt && \
+    pip install -i "$PIP_INDEX" -r xinference/deploy/docker/requirements/requirements-ml.txt && \
+    pip install -i "$PIP_INDEX" -r xinference/deploy/docker/requirements/requirements-models.txt && \
+    pip install -i "$PIP_INDEX" --no-deps sglang==0.4.6.post5 "xllamacpp>=0.2.0" --extra-index-url https://xorbitsai.github.io/xllamacpp/whl/cu121 && \
+    pip install --no-deps . && \
+    pip cache purge
 
-# -------------- 4. 默认启动方式 --------------
-ENTRYPOINT ["xinference"]
-CMD ["supervisor"]
+# 如需前端
+ENV NODE_VERSION=14.21.1
+RUN curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz | tar -xJ -C /usr/local --strip-components=1
+RUN cd /opt/inference && python3 setup.py build_web
+
+ENTRYPOINT []
+CMD ["/bin/bash"]
