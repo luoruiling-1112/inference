@@ -1,59 +1,61 @@
-########## 阶段 1：编译 &安装 ##########
-FROM vllm/vllm-openai:v0.6.0 AS builder
+#FROM nvidia/cuda:12.1.0-runtime-ubuntu20.04
 
-COPY . /opt/inference
-WORKDIR /opt/inference
+LABEL maintainer="your_name" \
+      description="Xinference 1.9.1 with CUDA 12.1 and vLLM"
 
+# -----------------------
+# 1. 基础环境
+# -----------------------
 ENV DEBIAN_FRONTEND=noninteractive
-# 1. 系统依赖 + Node（同你原来）
-ENV NVM_DIR=/usr/local/nvm NODE_VERSION=14.21.1
-RUN apt-get -y update && \
-    apt-get install -y wget curl procps git libgl1 libc6 libnuma1 && \
-    apt-get -y --only-upgrade install libstdc++6 && \
-    mkdir -p $NVM_DIR && \
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
-    . $NVM_DIR/nvm.sh && nvm install $NODE_VERSION && nvm alias default $NODE_VERSION && nvm use default && \
-    apt-get -yq clean && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
+RUN apt-get update && apt-get install -y \
+    software-properties-common \
+    build-essential \
+    git \
+    curl \
+    vim \
+    wget \
+    libibverbs-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-ENV PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
-ENV FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE
+# -----------------------
+# 2. Python 3.10
+# -----------------------
+RUN add-apt-repository ppa:deadsnakes/ppa -y && \
+    apt-get update && apt-get install -y \
+    python3.10 python3.10-dev python3.10-venv python3-pip \
+    && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1 \
+    && python3 -m pip install --upgrade pip setuptools wheel
 
-# 2. 用官方 PyPI 装全部包（同你原来逻辑，但放在 builder 阶段）
-ARG PIP_INDEX=https://pypi.org/simple
-RUN pip install --upgrade -i "$PIP_INDEX" pip setuptools wheel&& \
-    pip install -i "$PIP_INDEX" "diskcache>=5.6.1" "jinja2>=2.11.3" && \
-    pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/requirements/requirements-base.txt && \
-    pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/requirements/requirements-ml.txt && \
-    pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/requirements/requirements-models.txt && \
-    pip install -i $PIP_INDEX --no-deps WeTextProcessing==1.0.4.1 && \
-    pip install torch==2.4.1+cu121 torchvision==0.19.1+cu121 torchaudio==2.4.1+cu121 \
-        --index-url https://download.pytorch.org/whl/cu121 && \
-    pip install -i $PIP_INDEX importlib_resources sgl-kernel==0.1.2
+# -----------------------
+# 3. CUDA 相关依赖
+# -----------------------
+ENV PATH="/usr/local/cuda/bin:$PATH"
+ENV LD_LIBRARY_PATH="/usr/local/cuda/lib64:$LD_LIBRARY_PATH"
 
-# 3. 构建前端 & 安装项目
-RUN python3 setup.py build_web && git restore . && pip install --no-deps .
+# -----------------------
+# 4. AI 加速库
+# -----------------------
+RUN pip install --no-cache-dir \
+    accelerate \
+    hf_transfer \
+    "modelscope!=1.15.0" \
+    tabulate tqdm requests
 
-# 4. conda 装 ffmpeg 也放在 builder
-RUN wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh" && \
-    bash Miniforge3.sh -b -p /opt/conda && rm Miniforge3.sh && \
-    /opt/conda/bin/conda create -n ffmpeg-env -c conda-forge 'ffmpeg<7' -y && \
-    /opt/conda/bin/conda clean --all -y
+# flashinfer (CUDA 12.1, Torch 2.3, Python 3.10)
+RUN pip install --no-cache-dir \
+    https://github.com/flashinfer-ai/flashinfer/releases/download/v0.0.9/flashinfer-0.0.9+cu121torch2.3-cp310-cp310-linux_x86_64.whl
 
-########## 阶段 2：运行时镜像 ##########
-FROM vllm/vllm-openai:v0.6.0
+# llama-cpp-python (CUDA 12.4 轮子, 兼容 12.1 驱动)
+RUN pip install --no-cache-dir "llama-cpp-python>=0.2.82" -i https://abetlen.github.io/llama-cpp-python/whl/cu124
 
-# 只复制必要内容，不复制缓存/构建中间文件
-COPY --from=builder /opt/conda /opt/conda
-COPY --from=builder /opt/inference /opt/inference
-COPY --from=builder /usr/local/lib/python3.10/dist-packages /usr/local/lib/python3.10/dist-packages
-COPY --from=builder $NVM_DIR/versions/node/v14.21.1 /usr/local/nvm/versions/node/v14.21.1
+# -----------------------
+# 5. Xinference 1.9.1
+# -----------------------
+WORKDIR /opt/xinference
+RUN pip install --no-cache-dir "xinference==1.9.1"
 
-ENV NVM_DIR=/usr/local/nvm
-ENV PATH=$NVM_DIR/versions/node/v14.21.1/bin:$PATH
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/python3.10/dist-packages/nvidia/cublas/lib:/opt/conda/envs/ffmpeg-env/lib
-RUN ln -sf /opt/conda/envs/ffmpeg-env/bin/ffmpeg /usr/local/bin/ffmpeg && \
-    ln -sf /opt/conda/envs/ffmpeg-env/bin/ffprobe /usr/local/bin/ffprobe
-
-WORKDIR /opt/inference
-ENTRYPOINT []
-CMD ["/bin/bash"]
+# -----------------------
+# 6. 入口
+# -----------------------
+EXPOSE 9997
+ENTRYPOINT ["xinference", "launch", "--host", "0.0.0.0", "--port", "9997"]
