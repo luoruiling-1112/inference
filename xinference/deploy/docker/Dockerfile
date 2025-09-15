@@ -1,4 +1,4 @@
-#FROM nvidia/cuda:12.1.0-runtime-ubuntu20.04
+FROM nvidia/cuda:12.1.0-runtime-ubuntu20.04
 
 LABEL maintainer="your_name" \
       description="Xinference 1.9.1 with CUDA 12.1 and vLLM"
