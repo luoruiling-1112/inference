@@ -17,6 +17,12 @@ RUN apt-get -y update \
   && nvm alias default $NODE_VERSION \
   && nvm use default \
   && apt-get -yq clean
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libopenfst-dev \
+    pkg-config \
+    && pip install nemo_text_processing==1.1.0
   
 ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:/usr/local/lib/python3.10/dist-packages/nvidia/cublas/lib
