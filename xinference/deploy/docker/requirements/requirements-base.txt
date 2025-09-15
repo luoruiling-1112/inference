@@ -1,11 +1,11 @@
 xoscar>=0.7.2
 gradio==5.22.0
-pillow
+pillow>=9.0,<11.0
 click
 tqdm>=4.27
 tabulate
 requests
-pydantic>2
+pydantic>=2.0,<3.0
 fastapi>=0.110.3
 uvicorn
 huggingface-hub>=0.19.4
@@ -20,6 +20,6 @@ nvidia-ml-py
 pynvml>=12
 async-timeout
 peft
-opencv-contrib-python-headless
+opencv-contrib-python-headless>=4.8,<4.10
 setproctitle
 gguf
