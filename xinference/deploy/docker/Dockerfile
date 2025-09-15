@@ -17,12 +17,11 @@ ENV FLASH_ATTENTION_SKIP_CUDA_BUILD=TRUE
 
 # 2. 用官方 PyPI 装全部包（同你原来逻辑，但放在 builder 阶段）
 ARG PIP_INDEX=https://pypi.org/simple
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install -i $PIP_INDEX "diskcache>=5.6.1" "jinja2>=2.11.3" "numpy<2.0.0,>=1.23" && \
-    pip install -i $PIP_INDEX --upgrade-strategy only-if-needed \
-        -r /opt/inference/requirements/requirements-base.txt \
-        -r /opt/inference/requirements/requirements-ml.txt \
-        -r /opt/inference/requirements/requirements-models.txt && \
+RUN pip install --upgrade -i "$PIP_INDEX" pip setuptools wheel&& \
+    pip install -i "$PIP_INDEX" "diskcache>=5.6.1" "jinja2>=2.11.3" && \
+    pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/requirements/requirements-base.txt && \
+    pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/requirements/requirements-ml.txt && \
+    pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/requirements/requirements-models.txt && \
     pip install -i $PIP_INDEX --no-deps WeTextProcessing==1.0.4.1 && \
     pip install torch==2.4.1+cu121 torchvision==0.19.1+cu121 torchaudio==2.4.1+cu121 \
         --index-url https://download.pytorch.org/whl/cu121 && \
