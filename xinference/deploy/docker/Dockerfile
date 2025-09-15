@@ -1,6 +1,9 @@
 ########## 阶段 1：编译 &安装 ##########
 FROM vllm/vllm-openai:v0.6.0 AS builder
 
+COPY . /opt/inference
+WORKDIR /opt/inference
+
 ENV DEBIAN_FRONTEND=noninteractive
 # 1. 系统依赖 + Node（同你原来）
 ENV NVM_DIR=/usr/local/nvm NODE_VERSION=14.21.1
@@ -28,8 +31,6 @@ RUN pip install --upgrade -i "$PIP_INDEX" pip setuptools wheel&& \
     pip install -i $PIP_INDEX importlib_resources sgl-kernel==0.1.2
 
 # 3. 构建前端 & 安装项目
-COPY . /opt/inference
-WORKDIR /opt/inference
 RUN python3 setup.py build_web && git restore . && pip install --no-deps .
 
 # 4. conda 装 ffmpeg 也放在 builder
