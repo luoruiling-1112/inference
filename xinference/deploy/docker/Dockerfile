@@ -1,5 +1,5 @@
 # 基础镜像：CUDA 12.1 + Ubuntu20.04（devel 版本，包含编译工具链）
-FROM nvidia/cuda:12.1.1-cudnn8-devel-ubuntu20.04
+FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu20.04
 
 LABEL maintainer="your_name" \
       description="Xinference 1.9.1 with CUDA 12.1 and vLLM"
