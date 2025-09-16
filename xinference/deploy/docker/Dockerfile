@@ -12,7 +12,7 @@ RUN python3 -m pip install --upgrade "pip>=23" setuptools wheel
 
 # 先装 xoscar wheel，再装 xinference/vLLM/PyTorch，避开源码构建
 RUN pip install --no-cache-dir \
-        xoscar==0.3.2 \
+        "xoscar>=0.7.13" \
         "xinference==1.9.1" \
         "vllm==0.6.0" \
         torch==2.4.1+cu121 torchvision==0.19.1+cu121 torchaudio==2.4.1+cu121 \
