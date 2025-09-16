@@ -1,67 +1,53 @@
-FROM nvidia/cuda:12.1.0-devel-ubuntu20.04
+FROM vllm/vllm-openai:v0.6.0
 
-# 基础环境变量
-ENV DEBIAN_FRONTEND=noninteractive \
-    TZ=Asia/Shanghai \
-    NVARCH=x86_64 \
-    CUDA_VERSION=12.1.0 \
-    PYTHON_VERSION=3.10 \
-    PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-    LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64
-
-# ==========================
-#  系统依赖
-# ==========================
-RUN apt-get update -y && apt-get install -y \
-    gnupg2 curl ca-certificates software-properties-common ccache git vim \
-    libibverbs-dev ffmpeg procps libgl1 \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get update -y && apt-get install -y \
-    python${PYTHON_VERSION} python${PYTHON_VERSION}-dev python${PYTHON_VERSION}-venv \
-    && if [ "${PYTHON_VERSION}" != "3" ]; then \
-           update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1; \
-       fi \
-    && curl -sS https://bootstrap.pypa.io/get-pip.py | python${PYTHON_VERSION} \
-    && python3 --version \
-    && pip --version \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# ==========================
-#  安装 Python 依赖
-# ==========================
+COPY . /opt/inference
 WORKDIR /opt/inference
-ARG PIP_INDEX=https://pypi.org/simple
 
-RUN pip install --upgrade -i "$PIP_INDEX" pip \
-    && pip install -i "$PIP_INDEX" "diskcache>=5.6.1" "jinja2>=2.11.3" \
-    && pip install "llama-cpp-python>=0.2.82" -i https://abetlen.github.io/llama-cpp-python/whl/cu124 \
-    && pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/xinference/deploy/docker/requirements.txt \
-    && pip install -i "$PIP_INDEX" --no-deps sglang \
-    && pip install -i "$PIP_INDEX" "xinference==1.9.1" \
-    && python3 setup.py build_web \
-    && git restore . \
-    && pip cache purge
+ENV NVM_DIR /usr/local/nvm
+ENV NODE_VERSION 14.21.1
 
-# ==========================
-#  FlashInfer cu121 (匹配 CUDA 12.1)
-# ==========================
-RUN pip install https://github.com/flashinfer-ai/flashinfer/releases/download/v0.0.9/flashinfer-0.0.9+cu121torch2.3-cp310-cp310-linux_x86_64.whl
+RUN apt-get -y update \
+  && apt-get install -y wget curl procps git libgl1 \
+  && apt-get install -y --only-upgrade libstdc++6 \
+  && apt-get install -y libc6 libnuma1 \
+  && mkdir -p $NVM_DIR \
+  && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh  | bash \
+  && . $NVM_DIR/nvm.sh \
+  && nvm install $NODE_VERSION \
+  && nvm alias default $NODE_VERSION \
+  && nvm use default \
+  && apt-get -yq clean
+  
+ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
+ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:/usr/local/lib/python3.10/dist-packages/nvidia/cublas/lib
+ENV FLASH_ATTENTION_SKIP_CUDA_BUILD TRUE
 
-# ==========================
-#  Node.js (web 构建)
-# ==========================
-ENV NVM_DIR=/usr/local/nvm \
-    NODE_VERSION=14.21.1 \
-    PATH=/usr/local/nvm/versions/node/v14.21.1/bin:$PATH
+ARG PIP_INDEX=https://pypi.org/simple 
+RUN pip install --upgrade -i "$PIP_INDEX" pip setuptools wheel&& \
+    pip install -i "$PIP_INDEX" "diskcache>=5.6.1" "jinja2>=2.11.3" && \
+    pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/requirements/requirements-base.txt && \
+    pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/requirements/requirements-ml.txt && \
+    pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/requirements/requirements-models.txt && \
+    pip install -i "$PIP_INDEX" "numpy<2.0.0,>=1.23" && \
+    pip install -i "$PIP_INDEX" --no-deps WeTextProcessing==1.0.4.1 && \
+    pip install importlib_resources && \
+    pip install -i "$PIP_INDEX" sgl-kernel==0.1.2 && \
+    cd /opt/inference && \
+    python3 setup.py build_web && \
+    git restore . && \
+    pip install -i "$PIP_INDEX" --no-deps "." && \
+    pip cache purge
 
-RUN mkdir -p $NVM_DIR \
-    && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash \
-    && . $NVM_DIR/nvm.sh \
-    && nvm install $NODE_VERSION \
-    && nvm alias default $NODE_VERSION \
-    && nvm use default
+RUN apt-get install -y wget && \
+    wget -O Miniforge3.sh "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3- $(uname)-$(uname -m).sh" && \
+    bash Miniforge3.sh -b -p /opt/conda && \
+    rm Miniforge3.sh
 
-# ==========================
-#  Entrypoint
-# ==========================
-ENTRYPOINT ["xinference"]
+RUN /opt/conda/bin/conda create -n ffmpeg-env -c conda-forge 'ffmpeg<7' -y && \
+    ln -s /opt/conda/envs/ffmpeg-env/bin/ffmpeg /usr/local/bin/ffmpeg && \
+    ln -s /opt/conda/envs/ffmpeg-env/bin/ffprobe /usr/local/bin/ffprobe && \
+    /opt/conda/bin/conda clean --all -y
+
+# Overwrite the entrypoint of vllm's base image
+ENTRYPOINT []
+CMD ["/bin/bash"]
