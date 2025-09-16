@@ -2,6 +2,8 @@ FROM vllm/vllm-openai:v0.5.3
 
 COPY . /opt/inference
 WORKDIR /opt/inference
+RUN find /opt/inference -type f -name setup.py | tee /tmp/setup_py_list.txt
+
 
 ENV NVM_DIR /usr/local/nvm
 ENV NODE_VERSION 14.21.1
