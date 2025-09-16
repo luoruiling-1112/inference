@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 升级 pip，保证识别新版 wheel
 RUN python3 -m pip install --upgrade "pip>=23" setuptools wheel
 
-RUN pip install git+https://github.com/xorbitsai/xoscar.git@main
+RUN pip install --no-cache-dir "xoscar>=0.7.2"
 
 # ① 强制只装 wheel；② xoscar 用 0.8.2+（已有 whl）
 RUN pip install --no-cache-dir --only-binary :all: \
