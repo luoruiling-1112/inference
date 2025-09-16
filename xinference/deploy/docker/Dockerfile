@@ -1,12 +1,4 @@
-# 基础镜像：CUDA 12.1 + Ubuntu20.04（devel 版本，包含编译工具链）
 FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu20.04
-
-LABEL maintainer="your_name" \
-      description="Xinference 1.9.1 with CUDA 12.1 and vLLM"
-
-# 设置时区 & 避免交互
-ENV TZ=Asia/Shanghai
-ENV DEBIAN_FRONTEND=noninteractive
 
 # 安装基础依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -15,23 +7,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential ca-certificates pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-# 升级 pip & setuptools & wheel
-RUN python3 -m pip install --upgrade pip setuptools wheel
+# 升级 pip ≥23，确保优先使用 wheel
+RUN python3 -m pip install --upgrade "pip>=23" setuptools wheel
 
-# 安装 Xinference 1.9.1 及依赖
-RUN pip install --no-cache-dir "xinference==1.9.1" \
-    "vllm==0.6.0" \
-    torch==2.4.1+cu121 torchvision==0.19.1+cu121 torchaudio==2.4.1+cu121 \
-    --extra-index-url https://download.pytorch.org/whl/cu121
+# 先装 xoscar wheel，再装 xinference/vLLM/PyTorch，避开源码构建
+RUN pip install --no-cache-dir \
+        xoscar==0.3.2 \
+        "xinference==1.9.1" \
+        "vllm==0.6.0" \
+        torch==2.4.1+cu121 torchvision==0.19.1+cu121 torchaudio==2.4.1+cu121 \
+        --extra-index-url https://download.pytorch.org/whl/cu121
 
-# （可选）安装 ONNX Runtime GPU（CUDA 12.x）
+# （可选）ONNX Runtime GPU for CUDA 12.x
 RUN pip install --no-cache-dir onnxruntime-gpu==1.18.0
 
-# 创建工作目录
+# 工作目录
 WORKDIR /workspace
 
-# 暴露端口
+# 暴露 Xinference 默认端口
 EXPOSE 9997
 
-# 默认启动 Xinference
+# 默认启动命令
 CMD ["xinference", "local", "--host", "0.0.0.0", "--port", "9997"]
