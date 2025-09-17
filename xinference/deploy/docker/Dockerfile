@@ -1,9 +1,7 @@
-FROM vllm/vllm-openai:v0.5.3
+FROM vllm-openai:v0.5.3
 
 COPY . /opt/inference
 WORKDIR /opt/inference
-RUN find /opt/inference -type f -name setup.py | tee /tmp/setup_py_list.txt
-
 
 ENV NVM_DIR /usr/local/nvm
 ENV NODE_VERSION 14.21.1
@@ -28,6 +26,8 @@ ARG PIP_INDEX=https://pypi.org/simple
 RUN pip install --upgrade -i "$PIP_INDEX" pip setuptools wheel&& \
     pip install -i "$PIP_INDEX" "diskcache>=5.6.1" "jinja2>=2.11.3" && \
     pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/requirements/requirements-base.txt && \
+    pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/requirements/requirements-ml.txt && \
+    pip install -i "$PIP_INDEX" --upgrade-strategy only-if-needed -r /opt/inference/requirements/requirements-models.txt && \
     pip install -i "$PIP_INDEX" "numpy<2.0.0,>=1.23" && \
     pip install -i "$PIP_INDEX" --no-deps WeTextProcessing==1.0.4.1 && \
     pip install importlib_resources && \
